@@ -1,9 +1,9 @@
-from typing import Optional
+#from typing import Optional
 from PySide6.QtGui import QIcon, QAction,QAbstractFileIconProvider
 from PySide6.QtGui import QCursor
-from PySide6.QtWidgets import QWidget, QApplication, QGridLayout, QPushButton, QSystemTrayIcon, QMenu,QFileDialog,QInputDialog
+from PySide6.QtWidgets import QWidget, QApplication, QGridLayout, QPushButton, QSystemTrayIcon, QMenu,QFileDialog,QInputDialog,QToolButton
 from PySide6.QtCore import Qt,QFileInfo,QSize
-from PySide6.QtWidgets import QMessageBox
+#from PySide6.QtWidgets import QMessageBox
 #from BlurWindow.blurWindow import GlobalBlur
 #from aero_window import WindowEffect as GlobalBlur
 from win32mica import MicaTheme
@@ -30,6 +30,21 @@ qt_style = '''
         }
     QPushButton::hover{
         background-color: rgba(255,255,255,0.6); 
+    }
+    QToolButton {
+        background-color: rgba(255,255,255,0); 
+        width:64px; 
+        height:24px; 
+        border:none;
+        }
+    QToolButton#AppButton {
+        width:72px;
+        height:64px; 
+        border-radius:4px;
+        qproperty-iconSize: 24px;
+        }
+    QToolButton::hover{
+        background-color: rgba(255,255,255,0.6);  
     }
     #Title {
         background-color: rgba(255,255,255,0);
@@ -110,7 +125,7 @@ class Main(QWidget):
         the_x = window_x - widget.width()/2
         the_y = window_y - widget.height() - 60
         widget.move(int(the_x),int(the_y))
-
+    '''
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
             self.m_flag = True
@@ -124,7 +139,7 @@ class Main(QWidget):
     
     def mouseReleaseEvent(self, QMouseEvent):
         self.m_flag = False
-
+    '''
     def trayclicked(self,t):
         if t == QSystemTrayIcon.ActivationReason.Trigger:
             if self.isHidden() == False and self.isMinimized() == False:
@@ -172,7 +187,7 @@ class Main(QWidget):
 
 
     def initWindow(self):
-        
+
         self.setObjectName("Window")
         self.resize(100,30)
         Window_Title = "Pad"
@@ -185,13 +200,19 @@ class Main(QWidget):
         #self.Globalblur.setAcrylicEffect(int(self.winId()))
         ApplyMica(HWND=self.winId(), Theme=MicaTheme.LIGHT, Style=MicaStyle.DEFAULT)
 
+
+        '''
+        the_info = str(Qt.ToolButtonTextUnderIcon)
+        MessageBox(0,the_info, '错误', MB_OK)
+        '''
+
         #变量初始化
         try:
             with open('config.json', encoding='utf-8') as f :
                configs = json_load(f)
                f.close()
         except IOError:
-            MessageBox(0,'配置文件不存在，继续将新建配置文件', '错误', MB_OK)
+            MessageBox(0,'配置文件不存在，将新建配置文件', '错误', MB_OK)
             self.generate_config()
             self.reboot()
 
@@ -254,8 +275,12 @@ class Main(QWidget):
         for soft_n in thetype:
             thesrc = soft_n['src']
             icon = get_icon(thesrc)
-            names['btn_%s' % n] = QPushButton(icon,soft_n['name'])
+            #names['btn_%s' % n] = QPushButton(icon,soft_n['name'])
+            names['btn_%s' % n] = QToolButton()
             names['btn_%s' % n].setObjectName('AppButton')
+            names['btn_%s' % n].setIcon(icon)
+            names['btn_%s' % n].setText(soft_n['name'])
+            names['btn_%s' % n].setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
             x,y = get_xy(n)
             grid.addWidget(names['btn_%s' % n],y,x)
             names['btn_%s' % n].clicked.connect(partial(run_proc,thesrc))
