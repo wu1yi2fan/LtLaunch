@@ -1,7 +1,7 @@
 #from typing import Optional
-from PySide6.QtGui import QIcon, QAction,QAbstractFileIconProvider
+from PySide6.QtGui import QIcon, QAction,QAbstractFileIconProvider,QFontMetrics
 from PySide6.QtGui import QCursor
-from PySide6.QtWidgets import QWidget, QApplication, QGridLayout, QPushButton, QSystemTrayIcon, QMenu,QFileDialog,QInputDialog,QToolButton
+from PySide6.QtWidgets import QWidget, QApplication, QGridLayout, QPushButton, QSystemTrayIcon, QMenu,QFileDialog,QInputDialog,QToolButton, QLabel
 from PySide6.QtCore import Qt,QFileInfo,QSize
 #from PySide6.QtWidgets import QMessageBox
 #from BlurWindow.blurWindow import GlobalBlur
@@ -123,7 +123,7 @@ class Main(QWidget):
         window_x = QCursor.pos().x()
         window_y = QCursor.pos().y()
         the_x = window_x - widget.width()/2
-        the_y = window_y - widget.height() - 60
+        the_y = window_y - widget.height() - 64
         widget.move(int(the_x),int(the_y))
     '''
     def mousePressEvent(self, event):
@@ -202,7 +202,7 @@ class Main(QWidget):
 
 
         '''
-        the_info = str(Qt.ToolButtonTextUnderIcon)
+        the_info = str(QFontMetrics)
         MessageBox(0,the_info, '错误', MB_OK)
         '''
 
@@ -276,11 +276,34 @@ class Main(QWidget):
             thesrc = soft_n['src']
             icon = get_icon(thesrc)
             #names['btn_%s' % n] = QPushButton(icon,soft_n['name'])
+
+            button_layout = QGridLayout()
+            button_layout.setContentsMargins(4,8,4,8)
+            icon_label = QLabel()
+            icon_label.setPixmap(icon.pixmap(QSize(32,32)))
+            icon_label.setFixedHeight(32)
+            icon_label.setFixedWidth(64)
+            icon_label.setAlignment(Qt.AlignCenter)
+            text_label = QLabel()
+            softname = soft_n['name']
+            if len(soft_n['name']) > 9:
+                softname = soft_n['name'][:6] + "..."
+            text_label.setText(softname)
+            text_label.setFixedWidth(64)
+            text_label.setAlignment(Qt.AlignCenter)
+            button_layout.addWidget(icon_label,0,0)
+            button_layout.addWidget(text_label,1,0)
+            
             names['btn_%s' % n] = QToolButton()
             names['btn_%s' % n].setObjectName('AppButton')
+
+            names['btn_%s' % n].setLayout(button_layout)
+
+            '''
             names['btn_%s' % n].setIcon(icon)
             names['btn_%s' % n].setText(soft_n['name'])
             names['btn_%s' % n].setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
+            '''
             x,y = get_xy(n)
             grid.addWidget(names['btn_%s' % n],y,x)
             names['btn_%s' % n].clicked.connect(partial(run_proc,thesrc))
