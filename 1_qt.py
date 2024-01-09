@@ -108,9 +108,12 @@ class Main(QWidget):
 
     def generate_config(self):
         the_new_item = [{"name":"记事本", "src":"notepad.exe"}]
-        new_config = {"softlist": the_new_item}
+        new_config01 = {"softlist": the_new_item}
+        config_item = [{"name":"ui_mode", "configs":"text"}]
+        new_config02 = {"config": config_item}
         with open('config.json' ,'w' , encoding='utf-8') as f_new :
-            json_dump(new_config, f_new)
+            json_dump(new_config01, f_new)
+            json_dump(new_config02, f_new)
 
     def __init__(self):
         super().__init__()
@@ -160,7 +163,7 @@ class Main(QWidget):
             thetype.append(the_item_config)
             new_config = {"softlist": thetype}
             with open('config.json' ,'w' , encoding='utf-8') as f_new :
-                json_dump(new_config, f_new)
+                json_dump(new_config, f_new,ensure_ascii=False,indent=4, separators=(',', ':'))
                 f_new.close()
             MessageBox(0,'添加成功！点击确定立刻重载程序', '提示', MB_OK)
             self.reboot()
@@ -232,6 +235,19 @@ class Main(QWidget):
                 ShellExecute(0, 'open', src,'','', 1)
             finally:
                 return
+            
+        def get_configs(item):
+            the_config = configs['config']
+            the_result = the_config[0][item]
+            return the_result
+        
+        def set_configs(item,content):
+            configs['config'][0][item] = content
+            with open('config.json', 'w', encoding='utf-8') as w :
+                json_dump(configs,w,ensure_ascii=False,indent=4, separators=(',', ':'))
+                w.close()
+        
+
 
         def get_xy(n):
             n_i = n+2
@@ -271,43 +287,76 @@ class Main(QWidget):
         grid.addWidget(close_btn,0,2,alignment=Qt.AlignRight)
         close_btn.clicked.connect(partial(self.hide,))
         '''
-        n = 0
-        for soft_n in thetype:
-            thesrc = soft_n['src']
-            icon = get_icon(thesrc)
-            #names['btn_%s' % n] = QPushButton(icon,soft_n['name'])
+        
 
-            button_layout = QGridLayout()
-            button_layout.setContentsMargins(4,8,4,8)
-            icon_label = QLabel()
-            icon_label.setPixmap(icon.pixmap(QSize(32,32)))
-            icon_label.setFixedHeight(32)
-            icon_label.setFixedWidth(64)
-            icon_label.setAlignment(Qt.AlignCenter)
-            text_label = QLabel()
-            softname = soft_n['name']
-            if len(soft_n['name']) > 9:
-                softname = soft_n['name'][:6] + "..."
-            text_label.setText(softname)
-            text_label.setFixedWidth(64)
-            text_label.setAlignment(Qt.AlignCenter)
-            button_layout.addWidget(icon_label,0,0)
-            button_layout.addWidget(text_label,1,0)
-            
-            names['btn_%s' % n] = QToolButton()
-            names['btn_%s' % n].setObjectName('AppButton')
+        ui_mode = get_configs('ui_mode')
 
-            names['btn_%s' % n].setLayout(button_layout)
+        def mini_mode_ui():
+            return
+        
+        def text_mode_ui():
+            n = 0
+            for soft_n in thetype:
+                thesrc = soft_n['src']
+                names['btn_%s' % n] = QPushButton(soft_n['name'])
+                names['btn_%s' % n].setToolTip(soft_n['name'])
+                softname = soft_n['name']
+                if len(soft_n['name']) > 9:
+                    softname = soft_n['name'][:6] + "..."
+                names['btn_%s' % n].setText(softname)
+                names['btn_%s' % n].setObjectName('AppButton')
+                
+                x,y = get_xy(n)
+                grid.addWidget(names['btn_%s' % n],y,x)
+                names['btn_%s' % n].clicked.connect(partial(run_proc,thesrc))
+                n = n+1
+        
+        def normal_mode_ui():
+            n = 0
+            for soft_n in thetype:
+                thesrc = soft_n['src']
+                icon = get_icon(thesrc)
 
-            '''
-            names['btn_%s' % n].setIcon(icon)
-            names['btn_%s' % n].setText(soft_n['name'])
-            names['btn_%s' % n].setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
-            '''
-            x,y = get_xy(n)
-            grid.addWidget(names['btn_%s' % n],y,x)
-            names['btn_%s' % n].clicked.connect(partial(run_proc,thesrc))
-            n = n+1
+                button_layout = QGridLayout()
+                button_layout.setContentsMargins(4,8,4,8)
+                icon_label = QLabel()
+                icon_label.setPixmap(icon.pixmap(QSize(32,32)))
+                icon_label.setFixedHeight(32)
+                icon_label.setFixedWidth(64)
+                icon_label.setAlignment(Qt.AlignCenter)
+                text_label = QLabel()
+                softname = soft_n['name']
+                if len(soft_n['name']) > 9:
+                    softname = soft_n['name'][:6] + "..."
+                text_label.setText(softname)
+                text_label.setFixedWidth(64)
+                text_label.setAlignment(Qt.AlignCenter)
+                button_layout.addWidget(icon_label,0,0)
+                button_layout.addWidget(text_label,1,0)
+                
+                names['btn_%s' % n] = QToolButton()
+                names['btn_%s' % n].setObjectName('AppButton')
+                names['btn_%s' % n].setToolTip(soft_n['name'])
+                names['btn_%s' % n].setLayout(button_layout)
+
+                x,y = get_xy(n)
+                grid.addWidget(names['btn_%s' % n],y,x)
+                names['btn_%s' % n].clicked.connect(partial(run_proc,thesrc))
+                n = n+1
+
+        match ui_mode:
+            case "text":
+                text_mode_ui()
+            case "mini":
+                mini_mode_ui()
+            case "normal":
+                normal_mode_ui()
+            case _:
+                MessageBox(0,'配置文件有误！即将恢复默认界面', '错误', MB_OK)
+                set_configs('ui_mode','normal')
+                self.reboot()
+                return
+        
 
 
 if __name__ == "__main__":
