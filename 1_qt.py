@@ -1,7 +1,7 @@
 #from typing import Optional
-from PySide6.QtGui import QIcon, QAction,QAbstractFileIconProvider,QFontMetrics
+from PySide6.QtGui import QIcon, QAction,QAbstractFileIconProvider,QGuiApplication
 from PySide6.QtGui import QCursor
-from PySide6.QtWidgets import QWidget, QApplication, QGridLayout, QPushButton, QSystemTrayIcon, QMenu,QFileDialog,QInputDialog,QToolButton, QLabel
+from PySide6.QtWidgets import QWidget, QApplication, QGridLayout, QPushButton, QSystemTrayIcon, QMenu,QFileDialog,QInputDialog,QToolButton, QLabel,QSplashScreen
 from PySide6.QtCore import Qt,QFileInfo,QSize
 #from PySide6.QtWidgets import QMessageBox
 #from BlurWindow.blurWindow import GlobalBlur
@@ -43,6 +43,12 @@ qt_style = '''
         border-radius:4px;
         qproperty-iconSize: 24px;
         }
+    QToolButton#MiniButton {
+        width:36px;
+        height:36px; 
+        border-radius:4px;
+
+        }    
     QToolButton::hover{
         background-color: rgba(255,255,255,0.6);  
     }
@@ -97,7 +103,9 @@ class Main(QWidget):
         #self.Globalblur.setAcrylicEffect(int(self.winId()))
         #GlobalBlur(self.winId(),Acrylic=True)
         ApplyMica(HWND=self.winId(), Theme=MicaTheme.LIGHT, Style=MicaStyle.DEFAULT)
-        widget.showNormal()    
+        widget.showNormal()
+        
+        widget.activateWindow()    
 
     def exitwindow(self):
         QApplication.quit()
@@ -123,10 +131,17 @@ class Main(QWidget):
     
     def set_position(self):
         #window_x, window_y = pag_position()
-        window_x = QCursor.pos().x()
-        window_y = QCursor.pos().y()
-        the_x = window_x - widget.width()/2
-        the_y = window_y - widget.height() - 64
+        screen = QGuiApplication.primaryScreen()
+        mouse_x = QCursor.pos().x()
+        mouse_y = QCursor.pos().y()
+        desktop_height = screen.availableSize()
+        desktop_y = desktop_height.height()
+        screen_height = screen.size()
+        screen_y = screen_height.height()
+        taskbar_y = screen_y - desktop_y
+        window_size = widget.frameSize()
+        the_x = mouse_x - window_size.width()/2
+        the_y = mouse_y - window_size.height() - taskbar_y
         widget.move(int(the_x),int(the_y))
     '''
     def mousePressEvent(self, event):
@@ -190,6 +205,12 @@ class Main(QWidget):
 
 
     def initWindow(self):
+
+
+        loading_message = "加载中\nLoading"
+        the_splash_screen = QSplashScreen(f=Qt.WindowStaysOnTopHint)
+        the_splash_screen.showMessage(loading_message,alignment=Qt.AlignCenter)
+        the_splash_screen.show()
 
         self.setObjectName("Window")
         self.resize(100,30)
@@ -261,6 +282,25 @@ class Main(QWidget):
                 x = 2
                 y = int((n_i-2)/3+1)
             return x,y
+        
+        def get_mini_xy(n):
+            n_i = n+4
+            if (n_i % 5) == 0:
+                x = 1
+                y = int((n_i-5)/5+1)
+            if (n_i % 5) == 4:
+                x = 0
+                y = int((n_i-4)/5+1)
+            if (n_i % 5) == 1:
+                x = 2
+                y = int((n_i-6)/5+1)
+            if (n_i % 5) == 2:
+                x = 3
+                y = int((n_i-7)/5+1)
+            if (n_i % 5) == 3:
+                x = 4
+                y = int((n_i-8)/5+1)
+            return x,y
 
         grid = QGridLayout()
         grid.setObjectName("Grid")
@@ -292,7 +332,23 @@ class Main(QWidget):
         ui_mode = get_configs('ui_mode')
 
         def mini_mode_ui():
-            return
+            n = 0
+            grid.setColumnMinimumWidth(0,36)
+            grid.setColumnMinimumWidth(1,36)
+            grid.setColumnMinimumWidth(2,36)
+            for soft_n in thetype:
+                thesrc = soft_n['src']
+                icon = get_icon(thesrc)
+
+                names['btn_%s' % n] = QToolButton()
+                names['btn_%s' % n].setIcon(icon)
+                names['btn_%s' % n].setObjectName('MiniButton')
+                names['btn_%s' % n].setToolTip(soft_n['name'])
+
+                x,y = get_mini_xy(n)
+                grid.addWidget(names['btn_%s' % n],y,x)
+                names['btn_%s' % n].clicked.connect(partial(run_proc,thesrc))
+                n = n+1
         
         def text_mode_ui():
             n = 0
@@ -356,6 +412,9 @@ class Main(QWidget):
                 set_configs('ui_mode','normal')
                 self.reboot()
                 return
+
+        the_splash_screen.finish(self)
+    
         
 
 
@@ -365,6 +424,7 @@ if __name__ == "__main__":
     widget = Main()
     #widget.setWindowFlags(Qt.Window|Qt.FramelessWindowHint|Qt.WindowSystemMenuHint|Qt.WindowMinimizeButtonHint|Qt.WindowMaximizeButtonHint)
     
+    widget.setWindowFlags(Qt.WindowCloseButtonHint  | Qt.WindowMinimizeButtonHint)
     widget.show()
     widget.setFixedSize(widget.width(),widget.height())
     hotboot = 1
