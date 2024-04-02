@@ -1,8 +1,10 @@
+# Require Package: pyside6, win32mica, pywin32, nuitka
+
 #from typing import Optional
-from PySide6.QtGui import QIcon, QAction,QAbstractFileIconProvider,QGuiApplication
+from PySide6.QtGui import QFocusEvent, QIcon, QAction,QAbstractFileIconProvider,QGuiApplication
 from PySide6.QtGui import QCursor
 from PySide6.QtWidgets import QWidget, QApplication, QGridLayout, QPushButton, QSystemTrayIcon, QMenu,QFileDialog,QInputDialog,QToolButton, QLabel,QSplashScreen
-from PySide6.QtCore import Qt,QFileInfo,QSize
+from PySide6.QtCore import QObject, Qt,QFileInfo,QSize,QEvent
 #from PySide6.QtWidgets import QMessageBox
 #from BlurWindow.blurWindow import GlobalBlur
 #from aero_window import WindowEffect as GlobalBlur
@@ -16,6 +18,8 @@ from win32con import MB_OK
 from functools import partial
 from sys import exit, executable, argv
 from os import execl
+import time
+from threading import Thread
 #from pyautogui import position as pag_position
 
 qt_style = '''
@@ -91,11 +95,27 @@ hotboot = 0
 
 class Main(QWidget):
 
+    is_tray_clicked = 0
+
+    def eventFilter(self, watched: QObject, event: QEvent) -> bool:
+        # Check if focus out
+        if event.type() == QEvent.WindowDeactivate:
+            self.hide()
+            disactivate_thread = Thread(target=self.is_deactivate)
+            disactivate_thread.daemon = True
+            disactivate_thread.start()
+        return super().eventFilter(watched, event)
+
     def showEvent(self, event):
         if hotboot == 1:
             self.showwindow()
         if hotboot == 0:
             widget.show()
+
+    def is_deactivate(self):
+        self.is_tray_clicked = 1
+        time.sleep(0.1)
+        self.is_tray_clicked = 0
 
     def showwindow(self):
         self.set_position()
@@ -104,7 +124,6 @@ class Main(QWidget):
         #GlobalBlur(self.winId(),Acrylic=True)
         ApplyMica(HWND=self.winId(), Theme=MicaTheme.LIGHT, Style=MicaStyle.DEFAULT)
         widget.showNormal()
-        
         widget.activateWindow()    
 
     def exitwindow(self):
@@ -126,7 +145,7 @@ class Main(QWidget):
     def __init__(self):
         super().__init__()
         self.initTray()
-
+        self.installEventFilter(self)
         self.initWindow()
     
     def set_position(self):
@@ -163,8 +182,9 @@ class Main(QWidget):
             if self.isHidden() == False and self.isMinimized() == False:
                 self.hide()
             else:
-                self.showwindow()
-
+                if self.is_tray_clicked == 0:
+                    self.showwindow()
+            
     def addItem(self):
         the_new_item = QFileDialog().getOpenFileName(self,"选择文件","/","*.*")
         the_new_item_url = the_new_item[0].replace('/',r'\\')
@@ -183,13 +203,35 @@ class Main(QWidget):
             MessageBox(0,'添加成功！点击确定立刻重载程序', '提示', MB_OK)
             self.reboot()
 
+    def set_ui_mode(self):
+        ui_mode = ('Normal','Mini','Text')
+        input_dialog = QInputDialog()
+        input_dialog.setStyleSheet("QPushButton { height: 24px; }")
+        the_mode, is_ok = input_dialog.getItem(self,'设置显示模式','',ui_mode,current_ui,False)
+        if is_ok and the_mode:
+            match the_mode:
+                case "Normal":
+                    the_mode = "normal"
+                case "Mini":
+                    the_mode = "mini"
+                case "Text":
+                    the_mode = "text"
+                case _:
+                    return
+            self.set_configs('ui_mode',the_mode)
+            MessageBox(0,"即将重载至"+the_mode+"模式",'设置成功！',MB_OK)
+            self.reboot()
+
     def initTray(self):
         self.add_Item = QAction("添加")
+        self.set_ui = QAction('设置')
         self.show_window = QAction("显示")
         self.exit_window = QAction("退出")
         self.tray_list = QMenu()
         self.tray_list.addAction(self.add_Item)
         self.add_Item.triggered.connect(self.addItem)
+        self.tray_list.addAction(self.set_ui)
+        self.set_ui.triggered.connect(self.set_ui_mode)
         self.tray_list.addAction(self.show_window)
         self.show_window.triggered.connect(self.showwindow)
         self.tray_list.addAction(self.exit_window)
@@ -201,11 +243,19 @@ class Main(QWidget):
         self.trayicon.activated.connect(self.trayclicked)
         self.tray_list.setStyleSheet(qt_style)
         self.trayicon.show()
-        
 
+    def get_configs(self,item):
+            the_config = configs['config']
+            the_result = the_config[0][item]
+            return the_result
+        
+    def set_configs(self,item,content):
+            configs['config'][0][item] = content
+            with open('config.json', 'w', encoding='utf-8') as w :
+                json_dump(configs,w,ensure_ascii=False,indent=4, separators=(',', ':'))
+                w.close()
 
     def initWindow(self):
-
 
         loading_message = "加载中\nLoading"
         the_splash_screen = QSplashScreen(f=Qt.WindowStaysOnTopHint)
@@ -233,6 +283,7 @@ class Main(QWidget):
         #变量初始化
         try:
             with open('config.json', encoding='utf-8') as f :
+               global configs
                configs = json_load(f)
                f.close()
         except IOError:
@@ -247,7 +298,6 @@ class Main(QWidget):
             the_icon = the_icon_object.icon(the_file)
             return the_icon
 
-
         names = locals()
         global thetype
         thetype = configs['softlist']
@@ -257,17 +307,6 @@ class Main(QWidget):
             finally:
                 return
             
-        def get_configs(item):
-            the_config = configs['config']
-            the_result = the_config[0][item]
-            return the_result
-        
-        def set_configs(item,content):
-            configs['config'][0][item] = content
-            with open('config.json', 'w', encoding='utf-8') as w :
-                json_dump(configs,w,ensure_ascii=False,indent=4, separators=(',', ':'))
-                w.close()
-        
 
 
         def get_xy(n):
@@ -329,7 +368,7 @@ class Main(QWidget):
         '''
         
 
-        ui_mode = get_configs('ui_mode')
+        ui_mode = self.get_configs('ui_mode')
 
         def mini_mode_ui():
             n = 0
@@ -400,24 +439,25 @@ class Main(QWidget):
                 names['btn_%s' % n].clicked.connect(partial(run_proc,thesrc))
                 n = n+1
 
+        global current_ui
         match ui_mode:
             case "text":
                 text_mode_ui()
+                current_ui = 2
             case "mini":
                 mini_mode_ui()
+                current_ui = 1
             case "normal":
                 normal_mode_ui()
+                current_ui = 0
             case _:
                 MessageBox(0,'配置文件有误！即将恢复默认界面', '错误', MB_OK)
-                set_configs('ui_mode','normal')
+                self.set_configs('ui_mode','normal')
                 self.reboot()
                 return
 
         the_splash_screen.finish(self)
     
-        
-
-
 if __name__ == "__main__":
     app = QApplication([])
     QApplication.setQuitOnLastWindowClosed(False)
