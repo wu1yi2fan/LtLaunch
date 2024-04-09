@@ -131,16 +131,19 @@ class Main(QWidget):
 
     def reboot(self):
         p = executable
-        execl(p,p,*argv)
+        exec_file = argv[0]
+        if exec_file.endswith(".exe"):
+            execl(exec_file,exec_file,"")
+        else:
+            execl(p,p,*argv)
 
     def generate_config(self):
         the_new_item = [{"name":"记事本", "src":"notepad.exe"}]
-        new_config01 = {"softlist": the_new_item}
-        config_item = [{"name":"ui_mode", "configs":"text"}]
-        new_config02 = {"config": config_item}
+        config_item = [{"ui_mode":"normal"}]
+        new_config = {"softlist": the_new_item,"config": config_item}
         with open('config.json' ,'w' , encoding='utf-8') as f_new :
-            json_dump(new_config01, f_new)
-            json_dump(new_config02, f_new)
+            json_dump(new_config, f_new,ensure_ascii=False,indent=4, separators=(',', ':'))
+            #json_dump(new_config02, f_new,ensure_ascii=False,indent=4, separators=(',', ':'))
 
     def __init__(self):
         super().__init__()
